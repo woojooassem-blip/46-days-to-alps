@@ -26,10 +26,6 @@
             color: white !important; text-decoration: none;
             font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; border: 1.5px solid white;
-            cursor: pointer; pointer-events: auto; transition: all 0.2s ease;
-        }
-        .travel-time-box:hover {
-            background-color: rgba(37, 99, 235, 1); transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 4px 6px rgba(0,0,0,0.4);
         }
 
         .ferry-time-box {
@@ -39,7 +35,6 @@
             color: white !important; text-decoration: none;
             font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; border: 1.5px solid white;
-            cursor: default; pointer-events: none;
         }
 
         .loading-dots:after {
@@ -60,6 +55,7 @@
         <div class="flex-1 overflow-y-auto p-4" id="itinerary-list"></div>
     </div>
 
+    <!-- 풀스크린 상세 정보 오버레이 -->
     <div id="fullscreen-detail" class="fixed inset-0 bg-white z-[9999] hidden flex-col overflow-y-auto slide-up-enter">
         <div class="sticky top-0 bg-white border-b border-gray-200 shadow-sm p-4 flex justify-between items-center z-10">
             <div>
@@ -136,16 +132,16 @@
     <script>
         const itineraryData = [
             { isHome: true, date: "7. 17.(금)", nights: 0, name: "출발: Sheffield (S10 3BW)", lat: 53.3644, lng: -1.5367, elevation: "150m", temp: "14°C / 20°C", payment: "출발", facilities: "우리집", time: "알프스 대장정 시작", hasHighAltitude: false,
-              firepit: "해당 없음", attractions: "차량 최종 점검, 루프박스 및 트렁크 패킹 완료 후 브라이튼으로 출발.", supermarket: "-" },
+              firepit: "해당 없음", attractions: "짐 챙기기, 차량 최종 점검 및 출발", supermarket: "-" },
             
             { isHome: false, date: "7. 17.(금) - 7. 19.(일)", nights: 2, name: "지인 숙소 (Brighton BN3 2JN)", lat: 50.8276, lng: -0.1824, elevation: "20m", temp: "14°C / 22°C", payment: "-", facilities: "지인 자택 방문", time: "자유 일정", hasHighAltitude: false,
-              firepit: "<b>해변 바비큐 존 이용 예정.</b> 장작 사용은 금지됩니다. 지정 구역에서 숯을 이용한 화로대만 허용되니 숯을 미리 챙겨주세요.",
+              firepit: "<b>해변 바비큐 존 이용 예정.</b> 브라이튼 해변은 장작 사용이 엄격히 금지됩니다. 지정된 구역에서 숯을 이용한 화로대나 일회용 그릴만 허용되니 숯을 미리 준비해 주세요.",
               attractions: `<div class='space-y-1'><p><b>Day 1:</b> 브라이튼 피어(Brighton Palace Pier)의 테마파크에서 태라와 놀이기구 탑승</p><p><b>Day 2:</b> 세븐 시스터즈(Seven Sisters) 해안 절벽 산책 및 탁 트인 바다를 배경으로 가족 사진 촬영. 해변가 지정 구역에서 숯불 바비큐 저녁 식사.</p></div>`, 
-              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Sainsbury's Local:</b> 지인 숙소 근처에서 간단한 물품 구매.</li></ul>" },
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Sainsbury's Local:</b> 지인 숙소 근처에서 간단한 물품을 구매하기 좋습니다.</li></ul>" },
             
             { isHome: false, date: "7. 19.(일)", nights: 0, name: "도버(Dover) 페리 터미널", lat: 51.1271, lng: 1.3325, elevation: "0m", temp: "14°C / 21°C", payment: "페리: 116 POUND", facilities: "여객 터미널", time: "09:55 출발", hasHighAltitude: false,
               firepit: "화기 엄금", attractions: "도버 하얀 절벽(White Cliffs of Dover) 감상 및 차량 선적 대기.", 
-              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Tesco Extra (Dover):</b> 승선 전 간식거리 대량 구매.</li></ul>" },
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Tesco Extra (Dover):</b> 페리 탑승 전 영국의 간식거리와 대량 구매하기 좋은 메가 마트.</li></ul>" },
             
             { isHome: false, date: "7. 19.(일)", nights: 0, name: "칼레(Calais) 페리 터미널", lat: 50.9678, lng: 1.8601, elevation: "0m", temp: "15°C / 22°C", payment: "-", facilities: "입국 심사 및 하선", time: "12:35 도착", hasHighAltitude: false,
               firepit: "화기 엄금", attractions: "유럽 대륙 도착. 우측통행 운전 적응.", supermarket: "-" },
@@ -161,38 +157,38 @@
               supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Intermarché SUPER Montbard:</b> 캠핑장 5분 거리. 부르고뉴 와인 보충에 완벽합니다.</li></ul>" },
             
             { isHome: false, date: "7. 24.(금) - 7. 27.(월)", nights: 3, name: "프랑스 리옹: La Raza Meillonnas Municipal", lat: 46.2415, lng: 5.3524, elevation: "280m", temp: "15°C / 27°C", payment: "총 65EURO / 현장결제", facilities: "베이커리, 스낵바, 공용 바비큐장", time: "체크인: 14시~20시 / 체크아웃: 11시", hasHighAltitude: false,
-              firepit: "<b>숯/장작 사용 가능.</b> 리옹 인근은 화기 사용이 비교적 자유롭습니다.",
+              firepit: "<b>숯/장작 사용 가능.</b> Carrefour에서 브레스 닭고기를 구매해 ft6 더치오븐 요리를 시도해보세요.",
               attractions: `<div class='space-y-1'><p><b>Day 1:</b> 힐레베르그 피칭 후 휴식, 메이오나스(Meillonnas) 도자기 마을 구경</p><p><b>Day 2:</b> 리옹 시내 떼뜨 도흐 공원(Parc de la Tête d'Or) 방문. 무료 동물원과 거대한 호수가 있어 아이들에게 최고입니다.</p><p><b>Day 3:</b> 브루 수도원 관람 후 마트에서 구입한 고품질 브레스 닭고기로 ft6 더치오븐 로스트 치킨 요리 도전</p></div>`, 
               supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Carrefour Bourg En Bresse (진입 전):</b> 명품 닭고기를 살 수 있는 대형 마트.</li></ul>" },
             
-            { isHome: false, date: "7. 27.(월) - 7. 30.(목)", nights: 3, name: "프랑스 바누와스: Camping Les Lanchettes", lat: 45.5292, lng: 6.7645, elevation: "1,450m", temp: "8°C / 20°C", payment: "총 125EURO / 기결제 36 / 잔금 89 (CCI 5% 할인 요청)", facilities: "베이커리, 식료품점, 레스토랑, 라운지, 무료 셔틀", time: "체크인: 12시~18시 / 체크아웃: 12시", hasHighAltitude: false,
+            { isHome: false, date: "7. 27.(월) - 7. 30.(목)", nights: 3, name: "프랑스 바누와스: Camping Les Lanchettes", lat: 45.5292, lng: 6.7645, elevation: "1,450m", temp: "8°C / 20°C", payment: "총 125EURO / 기결제 36 / 잔금 89 (CCI 5% 할인 요청)", facilities: "베이커리, 식료품점, 레스토랑, 라운지, 무료 셔틀", time: "체크인: 12시~18시 / 체크아웃: 12시", hasHighAltitude: true,
               firepit: "<b>국립공원 규정 적용.</b> 장작불 금지, 밀폐형/다리 달린 숯불 화로대(아타고)만 허용.",
-              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 바누와스 국립공원의 완만한 하이킹 코스를 걸으며 야생 마멋(Marmot) 찾아보기</p><p><b>Day 2:</b> 캠핑장 무료 셔틀버스를 타고 레자크(Les Arcs) 지역의 알파인 리조트 구경 및 산책</p><p><b>Day 3:</b> 본격적인 고산 진입 전 고도 적응. 빛 공해가 없는 심야 시간대에 삼각대를 세우고 은하수 및 별 사진 촬영</p></div>`, 
+              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 바누와스 국립공원의 완만한 하이킹 코스를 걸으며 야생 마멋(Marmot) 찾아보기</p><p><b>Day 2:</b> 캠핑장 무료 셔틀버스를 타고 레자크(Les Arcs) 지역의 알파인 리조트 구경 및 산책</p><p><b>Day 3:</b> 빛 공해가 없는 심야 시간대에 삼각대를 세우고 은하수 및 별 사진 촬영</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>🏔️ 베이스캠프 고산 기후</p><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>해발 1,450m:</b> 한여름에도 새벽 기온이 7~8도까지 뚝 떨어집니다. 챙겨가시는 <b>랩(Rab) 침낭</b>이 이 구간부터 제 역할을 톡톡히 할 것입니다.</li></ul></div>`, 
               supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Super U Bourg Saint Maurice:</b> 고산 진입 전 마지막 대형 마트. 식량과 숯 확보 필수.</li></ul>" },
             
             { isHome: false, date: "7. 30.(목) - 8. 3.(월)", nights: 4, name: "프랑스 샤모니: Camping du Glacier D'Argentiere", lat: 45.9798, lng: 6.9272, elevation: "1,250m", temp: "9°C / 22°C", payment: "총 168EURO / 기결제 42 / 잔금 126 (CCI 비대상)", facilities: "공용 주방, 베이커리, 바&카페, 피자 트럭, 대중교통 카드", time: "체크인: 14시~20시 / 체크아웃: 11시", hasHighAltitude: true,
               firepit: "<b>부분 허용.</b> 관리실 사전 고지 후 아타고(숯) 사용 가능. 숯은 샤모니 시내에서 구매.",
-              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 몽탕베르 산악열차 탑승 및 메르 드 글라스(Mer de Glace) 얼음동굴 탐험 (태라 흥미 만점)</p><p><b>Day 2:</b> 에귀 뒤 미디 몽블랑 전망대 (여름에도 영하권. 버팔로 시스템즈 파일&퍼텍스 방한복 레이어링 및 랩 침낭 수준의 방한 필수)</p><p><b>Day 3:</b> 락 블랑(Lac Blanc) 하이킹으로 몽블랑 암봉이 반사되는 호수 절경 촬영</p><p><b>Day 4:</b> 무료 대중교통 카드로 샤모니 시내 산책, 저녁엔 캠핑장에 들어오는 피자 트럭에서 간편한 식사</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>몽블랑 멀티패스:</b> 1일권 성인 약 85 EURO (전망대, 산악열차 포함)</li></ul></div>`, 
-              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Carrefour Market Sallanches:</b> 샤모니 입구 평지 마트로 육류가 저렴합니다.</li><li><b>Super U Chamonix:</b> 샤모니 시내 중심의 중대형 마트. 과일과 베이커리 조달.</li></ul>" },
+              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 몽탕베르 산악열차 탑승 및 메르 드 글라스(Mer de Glace) 얼음동굴 탐험 (태라 흥미 만점)</p><p><b>Day 2:</b> 에귀 뒤 미디 몽블랑 전망대 투어</p><p><b>Day 3:</b> 락 블랑(Lac Blanc) 하이킹으로 몽블랑 암봉이 반사되는 호수 절경 촬영</p><p><b>Day 4:</b> 무료 대중교통 카드로 샤모니 시내 산책, 저녁엔 캠핑장에 들어오는 피자 트럭 이용</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>💰 패스 비용 및 🏔️ 정상 기후</p><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>몽블랑 멀티패스:</b> 1일권 성인 약 85 EURO</li><li><b>에귀 뒤 미디(3,842m):</b> 한여름에도 평균 -10°C ~ 0°C로 매우 춥습니다. 선호하시는 <b>버팔로 시스템즈(Buffalo Systems)</b>의 파일 앤 퍼텍스 의류 같은 강력한 방한복 레이어링이 필수입니다.</li></ul></div>`, 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Carrefour Market Sallanches:</b> 샤모니 입구 평지 마트로 육류가 저렴합니다.</li><li><b>Super U Chamonix:</b> 샤모니 시내 중심의 중대형 마트. 관광 전후 과일 조달.</li></ul>" },
             
             { isHome: false, date: "8. 3.(월) - 8. 8.(토)", nights: 5, name: "스위스 라우터브루넨: Camping Jungfrau", lat: 46.5888, lng: 7.9079, elevation: "800m", temp: "11°C / 20°C", payment: "총 330CHF / 기결제 74 / 잔금 256 (CCI 5% 할인 요청)", facilities: "공용 주방, 구내 마켓, 가족 욕실, 라운지, 대중교통 카드", time: "체크인: 15시~18시 30분 / 체크아웃: 10시", hasHighAltitude: true,
-              firepit: "<b>완전 허용 (Fire-friendly).</b> 캠핑장 내 샵에서 펠릿/장작 판매. 아타고 다리를 펴고 방염 매트 위 사용.",
-              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 텐트 앞에서 쏟아지는 슈타우바흐 폭포 감상 및 사이트 세팅 정비</p><p><b>Day 2:</b> 융프라우요흐 등반 산악열차 탑승 및 정상 얼음 궁전 관람 (태라의 두꺼운 패딩 필수, 정상 기온 -5°C~5°C)</p><p><b>Day 3:</b> 뮈렌(Mürren) 마을 케이블카 이동 및 알멘드후벨(Allmendhubel) 꽃의 계곡 놀이터 방문</p><p><b>Day 4:</b> 그린델발트 피르스트 클리프 워크 체험 및 보르트(Bort) 알파인 놀이터에서 태라 자유시간</p><p><b>Day 5:</b> 동굴 속 거대한 트뤼멜바흐 폭포 관람. 마지막 날은 마트에서 산 두툼한 삼겹살로 장작불 바비큐 파티</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>융프라우 트래블 패스(3일권):</b> 성인 약 210 CHF (융프라우요흐 정상 등반 시 추가금 약 75 CHF 발생)</li></ul></div>`, 
+              firepit: "<b>완전 허용 (Fire-friendly).</b> 아타고 다리를 펴고 방염 매트 위 사용.",
+              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 텐트 앞에서 쏟아지는 슈타우바흐 폭포 감상 및 사이트 세팅 정비</p><p><b>Day 2:</b> 융프라우요흐 등반 산악열차 탑승 및 정상 얼음 궁전 관람</p><p><b>Day 3:</b> 뮈렌(Mürren) 마을 케이블카 이동 및 알멘드후벨(Allmendhubel) 꽃의 계곡 놀이터 방문</p><p><b>Day 4:</b> 그린델발트 피르스트 클리프 워크 체험 및 보르트(Bort) 알파인 놀이터에서 태라 자유시간</p><p><b>Day 5:</b> 동굴 속 거대한 트뤼멜바흐 폭포 관람. 마지막 날은 마트에서 산 두툼한 삼겹살로 장작불 바비큐 파티</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>💰 패스 비용 및 🏔️ 정상 기후</p><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>융프라우 트래블 패스(3일권):</b> 성인 약 210 CHF (융프라우요흐 정상 등반 시 추가금 약 75 CHF 발생)</li><li><b>융프라우요흐(3,454m):</b> 만년설 지대로 한여름 평균 -5°C ~ 5°C. 베이스캠프 대비 15도 이상 낮으므로 태라의 겨울용 두꺼운 패딩 등 철저한 방한 대비가 필요합니다.</li></ul></div>`, 
               supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Migros (인터라켄):</b> 스위스 외식 물가 방어를 위해 진입 전 삼겹살 대량 구매 필수.</li></ul>" },
             
             { isHome: false, date: "8. 8.(토) - 8. 11.(화)", nights: 3, name: "스위스-이탈리아: Camping Muglin Müstair", lat: 46.6266, lng: 10.4485, elevation: "1,250m", temp: "9°C / 21°C", payment: "총 163CHF / 전액 결제 완료 (CCI 현장 할인 문의)", facilities: "무료 사우나, 공용 주방, 베이커리, 자전거 대여", time: "체크인: 14시 30분~22시 / 체크아웃: 10시", hasHighAltitude: false,
-              firepit: "<b>화로대 허용.</b> 진입 전 Zernez 마트에서 고기와 숯을 넉넉히 확보하세요.",
+              firepit: "<b>화로대 허용.</b> 진입 전 Zernez 마트에서 미리 고기와 숯 확보.",
               attractions: `<div class='space-y-1'><p><b>Day 1:</b> 캠핑장 도착 및 유네스코 세계문화유산인 성 요한 수도원 관람</p><p><b>Day 2:</b> 캠핑장의 무료 자전거를 대여해 태라와 함께 스위스 국립공원 주변 상쾌한 계곡길 라이딩</p><p><b>Day 3:</b> 게스트카드 할인으로 체르네츠(Zernez) 가족 수영장에서 물놀이. 저녁엔 캠핑장 내 무료 예약제 사우나로 피로 회복</p></div>`, 
               supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Coop Supermarkt Zernez:</b> 스위스 국립공원 초입의 중형 마트로 퀄리티가 좋습니다.</li></ul>" },
             
-            { isHome: false, date: "8. 11.(화) - 8. 16.(일)", nights: 5, name: "이탈리아 돌로미티: Camping Antholz", lat: 46.8809, lng: 12.1558, elevation: "1,650m", temp: "7°C / 19°C", payment: "총 285EURO / 현장결제 (잔금시 CCI 10% 할인 요청)", facilities: "유료 사우나(Naked), 레스토랑 & 피제리아, 대중교통 카드", time: "체크인: 15시~20시 / 체크아웃: 11시", hasHighAltitude: false,
+            { isHome: false, date: "8. 11.(화) - 8. 16.(일)", nights: 5, name: "이탈리아 돌로미티: Camping Antholz", lat: 46.8809, lng: 12.1558, elevation: "1,650m", temp: "7°C / 19°C", payment: "총 285EURO / 현장결제 (잔금시 CCI 10% 할인 요청)", facilities: "유료 사우나(Naked), 레스토랑 & 피제리아, 대중교통 카드", time: "체크인: 15시~20시 / 체크아웃: 11시", hasHighAltitude: true,
               firepit: "<b>산불 방지 엄격.</b> 돌로미티 특성상 굽는 요리보다 ft6를 활용한 찜이나 이탈리아 파스타 요리를 추천합니다.",
-              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 베이스캠프 중 가장 높은 고도(1,650m). 바로 앞 안테르셀바 호수(Lago di Anterselva) 숲길 산책</p><p><b>Day 2:</b> 브라이에스 호수(Lago di Braies) 방문. 에메랄드빛 물안개 절경을 위해 오전 7시 이전 도착 필수</p><p><b>Day 3:</b> 트레치메(Tre Cime di Lavaredo) 아우론초 산장 둘레길 트레킹. 비교적 평탄해 태라도 걷기 좋습니다.</p><p><b>Day 4:</b> 프라토 피아자(Prato Piazza) 고원 지대에서 편안한 야생화 하이킹</p><p><b>Day 5:</b> 휴식 및 찜 요리. 밤에는 돌로미티의 압도적인 암봉을 배경으로 야간 별 사진 촬영</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>🚗 이동 팁</p><ul class='list-disc pl-4 space-y-1 text-xs'><li>트레치메 톨게이트 및 산장 주차장은 오전 일찍 만차되니 서두르세요. (차량 약 1시간 20분 소요)</li></ul></div>`, 
-              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>DESPAR Brunico (진입 전 필수):</b> 브루니코 시내 마트. 이탈리아 파스타면과 프로슈토 득템.</li></ul>" },
+              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 바로 앞 안테르셀바 호수(Lago di Anterselva) 숲길 산책</p><p><b>Day 2:</b> 브라이에스 호수(Lago di Braies) 방문. 에메랄드빛 물안개 절경을 위해 오전 7시 이전 도착 필수</p><p><b>Day 3:</b> 트레치메(Tre Cime di Lavaredo) 아우론초 산장 둘레길 트레킹. 비교적 평탄해 태라도 걷기 좋습니다.</p><p><b>Day 4:</b> 프라토 피아자(Prato Piazza) 고원 지대에서 편안한 야생화 하이킹</p><p><b>Day 5:</b> 휴식 및 찜 요리. 밤에는 돌로미티의 압도적인 암봉을 배경으로 야간 별 사진 촬영</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>🏔️ 베이스캠프 고산 기후 및 이동 팁</p><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>해발 1,650m:</b> 이번 여정 중 고도가 가장 높은 베이스캠프입니다. 새벽 기온이 7도 내외로 쌀쌀하니 <b>랩(Rab) 침낭</b>을 필히 세팅해주세요.</li><li>트레치메 톨게이트 및 산장 주차장은 오전 일찍 만차되니 서두르세요. (차량 약 1시간 20분 소요)</li></ul></div>`, 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>DESPAR Brunico (진입 전):</b> 이탈리아 파스타, 프로슈토 구매.</li></ul>" },
             
             { isHome: false, date: "8. 16.(일) - 8. 21.(금)", nights: 5, name: "오스트리아 인스부르크: Camping Inntal", lat: 47.3871, lng: 11.8037, elevation: "570m", temp: "13°C / 25°C", payment: "총 297EURO / 기결제 90 / 잔금 207 (CCI 비대상)", facilities: "야외 수영장, 실내 놀이터, 전기자전거 대여, 게스트카드", time: "체크인: 13시~19시 / 체크아웃: 11시", hasHighAltitude: true,
               firepit: "<b>완전 허용.</b> 바비큐를 즐기기에 완벽합니다. 티롤 지역 소시지 굽기를 강력 추천합니다.",
-              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 캠핑장 내 야외 수영장과 실내 놀이터에서 태라와 여유로운 휴식</p><p><b>Day 2:</b> 스와로브스키 크리스탈 월드(Swarovski Kristallwelten) 방문 (아이들 및 가족 사진 촬영에 최고)</p><p><b>Day 3:</b> 노르트케테 케이블카 탑승 및 중턱에 위치한 알펜주(Alpenzoo) 고산 동물원 나들이</p><p><b>Day 4:</b> 인스부르크 구시가지 산책 및 인(Inn) 강 주변의 현대적 건축/도시 재생 프로젝트 공간 답사</p><p><b>Day 5:</b> 캠핑장 무료 전기자전거를 대여해 그림 같은 티롤 지역 시골길 가족 라이딩</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>인스부르크 카드(24h):</b> 성인 약 59 EURO (케이블카, 스와로브스키 모두 포함)</li><li><b>하펠레카르(2,334m):</b> 노르트케테 정상 부근은 한여름 5°C ~ 12°C. 시내보다 10도 이상 낮아 바람막이 필수.</li></ul></div>`, 
+              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 캠핑장 내 야외 수영장과 실내 놀이터에서 태라와 여유로운 휴식</p><p><b>Day 2:</b> 스와로브스키 크리스탈 월드(Swarovski Kristallwelten) 방문 (가족 사진 촬영에 최고)</p><p><b>Day 3:</b> 노르트케테 케이블카 탑승 및 중턱에 위치한 알펜주(Alpenzoo) 고산 동물원 나들이</p><p><b>Day 4:</b> 인스부르크 구시가지 산책 및 인(Inn) 강 주변의 현대적 건축/도시 재생 프로젝트 공간 답사</p><p><b>Day 5:</b> 캠핑장 무료 전기자전거를 대여해 그림 같은 티롤 지역 시골길 가족 라이딩</p></div><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>💰 패스 비용 및 🏔️ 정상 기후</p><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>인스부르크 카드(24h):</b> 성인 약 59 EURO (노르트케테, 스와로브스키 모두 포함)</li><li><b>하펠레카르(2,334m):</b> 노르트케테 정상 부근은 여름철 5°C ~ 12°C. 시내보다 10도 이상 낮아 서늘하니 바람막이나 경량 패딩이 필수입니다.</li></ul></div>`, 
               supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>INTERSPAR (DEZ 쇼핑몰):</b> 오스트리아 티롤 지역의 다채로운 식재료.</li></ul>" },
             
             { isHome: false, date: "8. 21.(금) - 8. 24.(월)", nights: 3, name: "독일 로텐부르크: Camping Tauberromantik", lat: 49.3673, lng: 10.1764, elevation: "430m", temp: "13°C / 24°C", payment: "총 107EURO / 현장결제 (CCI 비대상)", facilities: "레스토랑 & 비어가든, 베이커리 서비스, 구내 마켓", time: "체크인: 13시~18시 / 체크아웃: 11시", hasHighAltitude: false,
@@ -207,13 +203,13 @@
             
             { isHome: false, date: "8. 27.(목) - 8. 30.(일)", nights: 3, name: "네덜란드: Camping de Paal", lat: 51.2965, lng: 5.2974, elevation: "30m", temp: "13°C / 23°C", payment: "총 221EURO / 전액 결제 완료 (CCI 비대상)", facilities: "실내/실외 수영장, 애니메이션 공연, 레스토랑", time: "체크인: 14시~18시 / 체크아웃: 11시", hasHighAltitude: false,
               firepit: "<b>장작 금지 / 숯불만 제한적 허용.</b> 연기 나는 장작 금지, 취사용 아타고 숯불만 허용.",
-              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 열대 우림 컨셉의 거대한 실내 워터파크에서 아이들과 하루 종일 수영</p><p><b>Day 2:</b> 고카트(Go-kart) 대여 및 거대한 모래놀이터에서 태라 맞춤형 액티비티 시간</p><p><b>Day 3:</b> 캠핑장 애니메이션 팀의 야외 공연 관람. 외부 관광 없이 완벽한 리조트형 휴식 만끽</p></div>`, 
-              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Albert Heijn Eersel:</b> 네덜란드 1등 프리미엄 슈퍼마켓. 퀄리티 높은 간편식과 베이커리.</li></ul>" },
+              attractions: `<div class='space-y-1'><p><b>Day 1:</b> 열대 우림 컨셉의 거대한 실내 워터파크에서 태라와 하루 종일 수영</p><p><b>Day 2:</b> 고카트(Go-kart) 대여 및 거대한 모래놀이터에서 맞춤형 액티비티 시간</p><p><b>Day 3:</b> 캠핑장 애니메이션 팀의 야외 공연 관람. 외부 관광 없이 완벽한 리조트형 휴식 만끽</p></div>`, 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Albert Heijn Eersel:</b> 네덜란드 1등 프리미엄 슈퍼마켓.</li></ul>" },
             
             { isHome: false, date: "8. 30.(일)", nights: 0, name: "로테르담(Europoort) 페리 터미널", lat: 51.9546, lng: 4.1171, elevation: "0m", temp: "14°C / 22°C", payment: "페리: 498 POUND", facilities: "3인 저녁뷔페 및 조식 포함", time: "20:30 출발", hasHighAltitude: false,
               firepit: "해당 사항 없음.",
-              attractions: "탑승 전 시간이 남는다면 킨데르다이크(Kinderdijk) 풍차 마을 또는 큐브 하우스 구경.", 
-              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Markthal (로테르담 마켓홀):</b> 영국 귀환 전 마지막 기념품 및 다국적 음식 구매.</li></ul>" },
+              attractions: "탑승 전 시간이 남는다면 킨데르다이크 풍차 마을 구경.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Markthal (로테르담 마켓홀):</b> 영국 귀환 전 마지막 기념품 구매.</li></ul>" },
 
             { isHome: false, date: "8. 31.(월)", nights: 0, name: "헐(Hull) 페리 터미널", lat: 53.7460, lng: -0.2800, elevation: "0m", temp: "13°C / 20°C", payment: "-", facilities: "영국 입국 심사", time: "08:00 도착", hasHighAltitude: false,
               firepit: "해당 사항 없음.", attractions: "아침 식사 후 하선 및 귀가 드라이브 시작.", supermarket: "-" },
@@ -273,7 +269,7 @@
         function showDetail(item) {
             let badgeHtml = '';
             if (item.isHome) {
-                // 우리집
+                // 아무 뱃지도 노출하지 않음
             } else if (item.nights > 0) {
                 badgeHtml = `<span class="ml-2 inline-block bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold text-xs">${item.nights}박</span>`;
             } else {
@@ -293,7 +289,7 @@
             if(item.hasHighAltitude) {
                 attrTitle.innerHTML = '<span class="mr-2">📸</span> 주요 관광지 및 고산기후';
             } else {
-                attrTitle.innerHTML = '<span class="mr-2">📸</span> 추천 일정';
+                attrTitle.innerHTML = '<span class="mr-2">📸</span> 주요 관광지';
             }
 
             document.getElementById('detail-attractions').innerHTML = item.attractions;
