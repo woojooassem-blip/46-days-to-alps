@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summer Vacation Grand Tour Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .slide-up-enter { transform: translateY(100%); opacity: 0; }
+        .slide-up-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease-in-out; }
+        .slide-up-leave { transform: translateY(100%); opacity: 0; transition: all 0.3s ease-in-out; }
+
+        .custom-map-marker { background: none; border: none; }
+
+        .travel-time-label { background: transparent; border: none; }
+        .travel-time-box {
+            display: inline-flex; align-items: center; justify-content: center;
+            transform: translate(-50%, -50%); 
+            background-color: rgba(30, 64, 175, 0.95); 
+            color: white !important; text-decoration: none;
+            font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; border: 1.5px solid white;
+            cursor: pointer; pointer-events: auto; transition: all 0.2s ease;
+        }
+        .travel-time-box:hover {
+            background-color: rgba(37, 99, 235, 1); transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+        }
+        .loading-dots:after {
+            content: '.'; animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots { 0%, 20% { color: rgba(0,0,0,0); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0);} 40% { color: white; text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0);} 60% { text-shadow: .25em 0 0 white, .5em 0 0 rgba(0,0,0,0);} 80%, 100% { text-shadow: .25em 0 0 white, .5em 0 0 white;}}
+    </style>
+</head>
+<body class="bg-gray-50 h-screen w-full flex flex-col md:flex-row overflow-hidden font-sans relative">
+
+    <div id="map" class="w-full md:w-2/3 h-[45vh] md:h-full z-0 relative"></div>
+
+    <div class="w-full md:w-1/3 h-[55vh] md:h-full flex flex-col bg-white shadow-2xl z-10 relative">
+        <div class="bg-slate-800 text-white p-5 shadow-md flex-shrink-0">
+            <h1 class="text-xl font-bold tracking-tight">🏕️ Summer Vacation Grand Tour</h1>
+            <p class="text-sm text-slate-300 mt-1">7. 17. - 8. 31. (46일간의 여정)</p>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4" id="itinerary-list"></div>
+    </div>
+
+    <!-- 풀스크린 상세 정보 오버레이 -->
+    <div id="fullscreen-detail" class="fixed inset-0 bg-white z-[9999] hidden flex-col overflow-y-auto slide-up-enter">
+        <div class="sticky top-0 bg-white border-b border-gray-200 shadow-sm p-4 flex justify-between items-center z-10">
+            <div>
+                <div id="detail-date" class="text-sm font-semibold text-blue-600 flex items-center"></div>
+                <h2 class="text-2xl font-bold text-gray-800 mt-1" id="detail-title"></h2>
+            </div>
+            <button onclick="closeDetail()" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="p-6 max-w-4xl mx-auto w-full space-y-6">
+            
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-5 flex flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-blue-200 pb-4">
+                    <div>
+                        <p class="text-xs text-blue-600 font-bold mb-1">여름철 평균 기후 (7-8월 기준)</p>
+                        <p class="text-lg font-semibold text-gray-800">
+                            해발 <span id="detail-elev"></span> 
+                            <span class="text-gray-400 mx-2">|</span> 
+                            기온 <span id="detail-temp" class="text-blue-700"></span>
+                        </p>
+                    </div>
+                    <div class="text-3xl">🏔️</div>
+                </div>
+
+                <div>
+                    <p class="text-xs text-blue-600 font-bold mb-2">실시간 현지 기상 예보 (오늘~모레)</p>
+                    <div id="weather-forecast" class="flex gap-4">
+                        <span class="text-sm text-gray-500 loading-dots font-medium">기상청 데이터를 불러오는 중입니다</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detail-firepit" class="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start">
+                <span class="text-2xl mr-3 mt-1">🔥</span>
+                <div>
+                    <h3 class="font-bold text-orange-900 text-sm">화로대 및 장작 규정</h3>
+                    <p id="detail-firepit-text" class="text-orange-800 text-sm mt-1 leading-relaxed"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-6">
+                    <div class="bg-emerald-50 rounded-xl p-5 border border-emerald-100">
+                        <h3 id="detail-attractions-title" class="font-bold text-emerald-800 text-lg mb-3 flex items-center"></h3>
+                        <div id="detail-attractions" class="text-emerald-900 text-sm leading-relaxed space-y-2"></div>
+                    </div>
+                    
+                    <div class="bg-amber-50 rounded-xl p-5 border border-amber-100">
+                        <h3 class="font-bold text-amber-800 text-lg mb-3 flex items-center"><span class="mr-2">🛒</span> 주변 마트 정보</h3>
+                        <div id="detail-supermarket" class="text-amber-900 text-sm leading-relaxed"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-4">
+                    <h3 class="font-bold text-gray-800 text-lg border-b pb-2">캠핑장 상세 정보</h3>
+                    
+                    <div>
+                        <span class="block text-xs font-bold text-gray-500 mb-1">결제 현황</span>
+                        <span id="detail-payment" class="text-sm font-semibold text-red-600 bg-red-50 px-2 py-1 rounded"></span>
+                    </div>
+                    
+                    <div>
+                        <span class="block text-xs font-bold text-gray-500 mb-1">이용 시간</span>
+                        <span id="detail-times" class="text-sm text-gray-700"></span>
+                    </div>
+
+                    <div>
+                        <span class="block text-xs font-bold text-gray-500 mb-1">부대 시설</span>
+                        <p id="detail-facilities" class="text-sm text-gray-700 leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const itineraryData = [
+            { id: 1, date: "7. 17.(금) - 7. 19.(일)", nights: 2, name: "Brighton / Dover 페리 (유찬유솔이네)", lat: 50.8225, lng: -0.1372, elevation: "20m", temp: "14°C / 22°C", payment: "페리: 116 POUND", facilities: "지인 자택 방문", time: "로테르담 20:30 출발", hasHighAltitude: false,
+              firepit: "<b>해변 바비큐 존 이용 예정.</b> 브라이튼 해변은 환경 및 자갈 보호를 위해 장작(Wood/Campfire) 사용이 엄격히 금지되어 있습니다. 지정된 구역에서 숯(Charcoal)을 이용한 화로대나 일회용 그릴만 허용되니 숯을 미리 준비해 주세요.",
+              attractions: "브라이튼 피어(Brighton Palace Pier)의 테마파크, 도버 하얀 절벽(White Cliffs of Dover) 산책로.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Tesco Extra (Dover):</b> 페리 탑승 전 대량 구매하기 좋은 대형 메가 마트입니다.</li><li><b>Aldi (Dover):</b> 가성비 좋은 식료품과 간식을 보충하기에 최적화되어 있습니다.</li><li><b>Sainsbury's Local:</b> 브라이튼 지인 집 근처에서 간단한 물품을 신속히 구매하기 좋습니다.</li></ul>" },
+            
+            { id: 2, date: "7. 19.(일) - 7. 22.(수)", nights: 3, name: "프랑스 라임스: Camping au Bord de l'Aisne", lat: 49.435, lng: 3.965, elevation: "80m", temp: "14°C / 25°C", payment: "총 122EURO / 기결제 37 / 잔금 85 (CCI 비대상)", facilities: "수영장, 사우나, 일광욕실, 베이커리, 식료품점", time: "현장 확인 필요", hasHighAltitude: false,
+              firepit: "<b>숯/장작 사용 가능.</b> 지면과 띄워진 형태의 아타고 사용이 허용됩니다. 구내 식료품점에서 숯을 소량 판매하나, E.Leclerc 마트에서 질 좋은 숯을 미리 구비해 오시는 것을 추천합니다.",
+              attractions: "랭스 대성당(노트르담 대성당)과 유명 샴페인 하우스 투어. 캠핑장 내 수영장에서 가족 물놀이 위주의 휴식 추천.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>E.Leclerc Reims (진입 전):</b> 프랑스 진입 후 첫 본격적인 장보기를 위한 거대 마트. 샴페인과 정육 코너가 매우 훌륭합니다.</li><li><b>Carrefour City (시내 중심):</b> 랭스 관광 중 가볍게 들러 간식이나 음료수 사기 좋은 도심형 마트입니다.</li><li><b>캠핑장 식료품점:</b> 멀리 나가지 않고도 매일 아침 신선한 베이커리와 급한 생필품을 조달할 수 있습니다.</li></ul>" },
+            
+            { id: 3, date: "7. 22.(수) - 7. 24.(금)", nights: 2, name: "프랑스 몽바흐: Camping Municipal", lat: 47.623, lng: 4.337, elevation: "220m", temp: "14°C / 26°C", payment: "총 58EURO / 현장결제", facilities: "워터파크 무료, 베이커리, 스낵바, 공용 바비큐장", time: "체크인: 10시~12시, 15시~19시 / 체크아웃: 11시", hasHighAltitude: false,
+              firepit: "<b>장작 금지 / 숯불만 가능 (건조기).</b> 공용 바비큐장이 마련되어 있으나 텐트 옆에서 아타고 사용 시 불티가 튀지 않는 숯(Charcoal)만 허용됩니다.",
+              attractions: "세계문화유산인 퐁트네 수도원(Abbaye de Fontenay)과 고즈넉한 부르고뉴 운하 자전거 산책.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Intermarché SUPER Montbard:</b> 캠핑장에서 차량으로 단 5분 거리. 부르고뉴 와인과 현지 치즈, 장작 등 소규모 보충에 완벽합니다.</li><li><b>ALDI Montbard:</b> 캠핑장 인근에 위치하며 가성비 중심의 기본 식자재와 생수를 사기에 좋습니다.</li></ul>" },
+            
+            { id: 4, date: "7. 24.(금) - 7. 27.(월)", nights: 3, name: "프랑스 리옹: La Raza Meillonnas Municipal", lat: 46.244, lng: 5.350, elevation: "280m", temp: "15°C / 27°C", payment: "총 65EURO / 현장결제", facilities: "베이커리, 스낵바, 공용 바비큐장", time: "체크인: 14시~20시 / 체크아웃: 11시", hasHighAltitude: false,
+              firepit: "<b>숯/장작 사용 가능.</b> 리옹 인근은 기후가 유순해 화기 사용이 비교적 자유롭습니다. 진입 전 Carrefour에서 브레스 닭고기와 장작을 구매해 ft6 더치오븐 요리를 시도해보세요.",
+              attractions: "브루 수도원(Monastère royal de Brou) 및 리옹 구시가지 미식 탐방.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Carrefour Bourg En Bresse (진입 전):</b> 캠핑장 진입 전 들르기 좋은 대형 마트.</li><li><b>Intermarché SUPER Treffort Cuisiat:</b> 매일 필요한 야채나 빵 보충에 유용합니다.</li></ul>" },
+            
+            { id: 5, date: "7. 27.(월) - 7. 30.(목)", nights: 3, name: "프랑스 바누와스: Camping Les Lanchettes", lat: 45.541, lng: 6.758, elevation: "1,450m", temp: "8°C / 20°C", payment: "총 125EURO / 기결제 36 / 잔금 89 (CCI 5% 할인 요청)", facilities: "베이커리, 식료품점, 레스토랑, 라운지, 무료 셔틀", time: "체크인: 12시~18시 / 체크아웃: 12시", hasHighAltitude: false,
+              firepit: "<b>국립공원 규정 적용 (산불 주의).</b> 원칙적으로 개방형 장작불은 엄격히 금지되며, 재가 날리지 않는 아타고와 같은 밀폐형/다리 달린 숯불 화로대만 제한적으로 허용됩니다.",
+              attractions: "바누와스 국립공원 트레킹. 밤에는 은하수와 별 사진 촬영에 완벽한 스팟입니다.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Super U Bourg Saint Maurice (진입 전 필수):</b> 본격적인 고산 진입 전 만나는 마지막 대형 마트입니다. 며칠 치 식량과 화로대용 숯, 장작을 넉넉히 확보하세요.</li><li><b>Sherpa Supermarché Peisey-Vallandry:</b> 캠핑장에서 비교적 가까운 산장형 소형 마트로, 부족한 와인이나 간편식을 급히 사기에 좋습니다.</li></ul>" },
+            
+            { id: 6, date: "7. 30.(목) - 8. 3.(월)", nights: 4, name: "프랑스 샤모니: Camping du Glacier D'Argentiere", lat: 45.981, lng: 6.927, elevation: "1,250m", temp: "9°C / 22°C", payment: "총 168EURO / 기결제 42 / 잔금 126 (CCI 비대상)", facilities: "공용 주방, 베이커리, 바&카페, 피자 트럭, 대중교통 카드", time: "체크인: 14시~20시 / 체크아웃: 11시", hasHighAltitude: true,
+              firepit: "<b>부분 허용.</b> 바람이 많이 부는 빙하 지역이므로 관리실에 사전 고지 후 아타고(숯) 사용이 가능합니다. 장작/숯은 샤모니 시내 마트(Super U)에서 미리 사오셔야 합니다.",
+              attractions: "에귀 뒤 미디(Aiguille du Midi) 몽블랑 전망대. 태라가 좋아할 몽탕베르 산악열차와 메르 드 글라스 얼음동굴.<br><br><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>💰 패스 비용 및 🏔️ 정상 기후</p><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>몽블랑 멀티패스:</b> 1일권 성인 약 85 EURO (에귀 뒤 미디, 몽탕베르 등 포함)</li><li><b>에귀 뒤 미디(3,842m):</b> 한여름에도 평균 -10°C ~ 0°C로 매우 춥습니다. 선호하시는 버팔로 시스템즈의 방한복 같은 강력한 레이어링 필수.</li></ul></div>", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Carrefour Market Sallanches (진입 전):</b> 샤모니 입구 평지 마을의 대형 마트. 샤모니 시내보다 물가가 훨씬 저렴하니 이곳에서 육류를 채워가세요.</li><li><b>Super U Chamonix:</b> 샤모니 시내 중심의 중대형 마트. 관광 전후로 베이커리와 과일을 사기 아주 좋습니다.</li><li><b>SPAR (Argentière):</b> 캠핑장 바로 옆 도보권에 있는 미니 마트.</li></ul>" },
+            
+            { id: 7, date: "8. 3.(월) - 8. 8.(토)", nights: 5, name: "스위스 라우터브루넨: Camping Jungfrau", lat: 46.593, lng: 7.907, elevation: "800m", temp: "11°C / 20°C", payment: "총 330CHF / 기결제 74 / 잔금 256 (CCI 5% 할인 요청)", facilities: "공용 주방, 구내 마켓, 가족 욕실, 라운지, 대중교통 카드", time: "체크인: 15시~18:30 / 체크아웃: 10시", hasHighAltitude: true,
+              firepit: "<b>완전 허용 (Fire-friendly).</b> 캠핑장 내 샵에서 펠릿과 장작을 판매합니다. 잔디 보호를 위해 아타고의 다리를 펴고 바닥에 방염 매트를 까는 매너가 필요합니다.",
+              attractions: "캠핑장 내에서 보이는 슈타우바흐 폭포 절경, 융프라우요흐 등반 산악열차, 뮈렌(Mürren) 마을 산책.<br><br><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>💰 패스 비용 및 🏔️ 정상 기후</p><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>융프라우 트래블 패스(3일권):</b> 성인 약 210 CHF (융프라우요흐 등반 시 별도 약 75 CHF 추가)</li><li><b>융프라우요흐 왕복권:</b> 개별 발권 시 성인 약 220 CHF</li><li><b>융프라우요흐(3,454m):</b> 만년설 지대로 한여름 평균 -5°C ~ 5°C. 베이스캠프 대비 15도 이상 낮아 한겨울 옷차림이 필요합니다.</li></ul></div>", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Migros Supermarkt (인터라켄):</b> 산 진입 전 만나는 대형 마트. 살인적인 스위스 외식 물가를 방어하기 위해 삼겹살(Schweinebauch)과 필수품을 여기서 대량 구매하세요.</li><li><b>Coop Supermarkt Lauterbrunnen:</b> 기차역 앞 마을 마트. 융프라우 관광을 마치고 내려오는 길에 들르기 완벽한 동선입니다.</li><li><b>Camping Jungfrau Shop:</b> 캠핑장 구내 마트로, 매일 아침 구워내는 신선한 빵이 일품입니다.</li></ul>" },
+            
+            { id: 8, date: "8. 8.(토) - 8. 11.(화)", nights: 3, name: "스위스-이탈리아: Camping Muglin Müstair", lat: 46.626, lng: 10.448, elevation: "1,250m", temp: "9°C / 21°C", payment: "총 163CHF / 전액 결제 완료 (CCI 현장 할인 문의)", facilities: "무료 사우나, 공용 주방, 베이커리, 자전거 대여, 게스트카드", time: "체크인: 14:30~22시 / 체크아웃: 10시", hasHighAltitude: false,
+              firepit: "<b>화로대 허용.</b> 스위스 외곽 지역이라 분위기가 여유롭습니다. 진입 전 Zernez의 마트에서 미리 고기와 숯을 확보해 두세요.",
+              attractions: "게스트카드로 할인받는 성 요한 수도원 박물관, 무료 자전거 대여를 활용한 스위스 국립공원 주변 라이딩.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Coop Supermarkt Zernez (진입 전):</b> 무스따이르로 넘어오는 스위스 국립공원 초입의 중형 마트로, 마지막 스위스 식재료 장보기에 좋습니다.</li><li><b>Volg Müstair:</b> 캠핑장 인근의 아기자기한 마을 마트로 지역 특산품과 필수 생필품을 구비하고 있습니다.</li></ul>" },
+            
+            { id: 9, date: "8. 11.(화) - 8. 16.(일)", nights: 5, name: "이탈리아 돌로미티: Camping Antholz", lat: 46.883, lng: 12.152, elevation: "1,650m", temp: "7°C / 19°C", payment: "총 285EURO / 현장결제 (잔금시 CCI 10% 할인 요청)", facilities: "유료 사우나(naked), 레스토랑, 마켓, 대중교통 카드", time: "체크인: 15시~20시 / 체크아웃: 11시", hasHighAltitude: false,
+              firepit: "<b>산불 방지 엄격.</b> 돌로미티 특성상 바람이 불 때는 숯불 사용도 통제될 수 있습니다. 굽는 요리보다 ft6를 활용한 찜이나 전골 요리를 메인으로 준비하시는 것이 안전합니다.",
+              attractions: "안테르셀바 호수(Lago di Anterselva) 주변 숲길 산책. 이번 여정 중 베이스캠프 고도가 가장 높아 밤하늘 천체 사진을 찍기 최고의 조건입니다.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>DESPAR Brunico (진입 전 필수):</b> 안톨츠 계곡으로 깊이 들어가기 전 들러야 하는 거점 도시 부르니코의 대형 마트. 이탈리아 파스타, 프로슈토, 올리브 오일을 저렴하게 득템하세요.</li><li><b>Conad City Valdaora:</b> 캠핑장으로 가는 산길 초입의 중형 마트. 놓친 물건을 보충하기에 적합합니다.</li><li><b>캠핑장 구내 마켓:</b> 간단한 이탈리아 햄이나 지역 치즈, 맥주를 구하기 좋습니다.</li></ul>" },
+            
+            { id: 10, date: "8. 16.(일) - 8. 21.(금)", nights: 5, name: "오스트리아 인스부르크: Camping Inntal", lat: 47.404, lng: 11.798, elevation: "570m", temp: "13°C / 25°C", payment: "총 297EURO / 기결제 90 / 잔금 207 (CCI 비대상)", facilities: "야외 수영장, 실내 놀이터, 레스토랑, 전기자전거, 게스트카드", time: "체크인: 13시~19시 / 체크아웃: 11시", hasHighAltitude: true,
+              firepit: "<b>완전 허용.</b> 바비큐를 즐기기에 완벽합니다. MPREIS 마트에서 산 티롤 지역 소시지를 아타고에 굽기에 아주 좋습니다.",
+              attractions: "태라가 좋아할 만한 스와로브스키 크리스탈 월드, 노르트케테(Nordkette) 케이블카로 알프스 전망 감상.<br><br><div class='bg-emerald-100 p-3 rounded-lg border border-emerald-200 mt-2'><p class='font-bold text-emerald-900 border-b border-emerald-200 pb-1 mb-2'>💰 패스 비용 및 🏔️ 정상 기후</p><ul class='list-disc pl-4 space-y-1 text-xs'><li><b>인스부르크 카드(24h):</b> 성인 약 59 EURO (노르트케테, 스와로브스키, 대중교통 모두 포함되어 가성비 최고)</li><li><b>하펠레카르(2,334m):</b> 노르트케테 정상 부근은 여름철 5°C ~ 12°C. 인스부르크 시내보다 10도 이상 낮아 서늘하니 바람막이가 필수입니다.</li></ul></div>", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>INTERSPAR (DEZ 쇼핑몰, 진입 전):</b> 인스부르크 외곽의 초대형 마트. 오스트리아 티롤 지역의 다채로운 식재료를 한곳에서 구경할 수 있습니다.</li><li><b>MPREIS:</b> 캠핑장 인근 및 오스트리아 전역에 있는 로컬 마트로, 질 좋은 소시지와 티롤 맥주를 강력히 추천합니다.</li><li><b>Billa:</b> 시내 관광 중 간편식, 음료, 디저트를 사기 좋은 도심형 마트입니다.</li></ul>" },
+            
+            { id: 11, date: "8. 21.(금) - 8. 24.(월)", nights: 3, name: "독일 로텐부르크: Camping Tauberromantik", lat: 49.368, lng: 10.177, elevation: "430m", temp: "13°C / 24°C", payment: "총 107EURO / 현장결제 (CCI 비대상)", facilities: "레스토랑, 베이커리, 자전거 대여, 밤의 파수꾼 투어", time: "체크인: 13시~18시 / 체크아웃: 11시", hasHighAltitude: false,
+              firepit: "<b>바비큐 그릴 허용.</b> 독일 캠핑장은 바비큐 문화가 발달해 있습니다. Kaufland에서 구매한 두꺼운 돼지 목살을 화로대에 굽는 것을 추천합니다.",
+              attractions: "중세 동화 마을 같은 로텐부르크 구시가지, 플뢴라인(Plönlein), 20시에 진행되는 밤의 파수꾼 투어(Night Watchman Tour).", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Kaufland Rothenburg (최적의 장보기):</b> 압도적인 규모를 자랑합니다. 독일식 정육 코너에서 저렴하고 두꺼운 돼지 목살을 사서 바비큐를 즐기기 완벽합니다.</li><li><b>Edeka Schuler:</b> 캠핑장과 구시가지 중간에 있어 퀄리티 높은 프리미엄 식재료를 수급하기에 좋습니다.</li><li><b>Netto Marken-Discount:</b> 저렴한 가격에 물, 음료수, 공산품을 채워넣기에 적합한 가성비 마트입니다.</li></ul>" },
+            
+            { id: 12, date: "8. 24.(월) - 8. 27.(목)", nights: 3, name: "독일 모젤강: Camping Holländischer Hof", lat: 50.084, lng: 7.213, elevation: "100m", temp: "13°C / 24°C", payment: "총 131EURO / 기결제 44 / 잔금 86 (7.27까지 결제)", facilities: "정보 확인 필요", time: "정보 확인 필요", hasHighAltitude: false,
+              firepit: "<b>숯/장작 사용 가능.</b> 강변 캠핑장이므로 운치 있게 화로대를 켤 수 있습니다. 현지 마트에서 쉽게 숯과 착화제를 구할 수 있습니다.",
+              attractions: "포도밭 언덕 위의 코헴 성(Reichsburg Cochem)과 평화로운 모젤 강변 산책.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>REWE Cochem:</b> 코헴 시내에 위치해 모젤 강 특유의 상큼한 리슬링 화이트 와인과 곁들일 신선식품을 사기 가장 좋은 중대형 마트입니다.</li><li><b>ALDI SÜD:</b> 코헴 외곽에 위치하여, 간식과 맥주, 물 등을 묶음으로 저렴하게 쟁여두기 좋습니다.</li></ul>" },
+            
+            { id: 13, date: "8. 27.(목) - 8. 30.(일)", nights: 3, name: "네덜란드: Camping de Paal", lat: 51.298, lng: 5.297, elevation: "30m", temp: "13°C / 23°C", payment: "총 221EURO / 전액 결제 완료 (CCI 비대상)", facilities: "실내/실외 수영장, 애니메이션 공연, 레스토랑, 식료품점", time: "체크인: 14시~18시 / 체크아웃: 11시", hasHighAltitude: false,
+              firepit: "<b>장작 금지 / 숯불만 제한적 허용.</b> 대규모 키즈/패밀리 캠핑장이므로 연기가 많이 나는 장작은 금지됩니다. 취사용 숯불 화로대(아타고)만 허용됩니다.",
+              attractions: "아이들을 위한 최고의 캠핑장입니다. 외부 관광보다는 캠핑장 내 워터파크와 애니메이션 팀 공연을 100% 즐기시길 권장합니다.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Albert Heijn Eersel (차량 10분):</b> 네덜란드 1등 프리미엄 슈퍼마켓. 압도적인 치즈 코너와 매우 훌륭한 퀄리티의 간편식, 베이커리를 만날 수 있습니다.</li><li><b>Jumbo Eersel:</b> Albert Heijn과 마주보고 있는 네덜란드의 대표 마트로 넓고 쾌적한 장보기가 가능합니다.</li><li><b>캠핑장 내 마켓:</b> 넓은 캠핑장 밖으로 나갈 필요 없이 텐트 주변에서 태라 간식과 얼음을 바로 살 수 있습니다.</li></ul>" },
+            
+            { id: 14, date: "8. 30.(일) - 8. 31.(월)", nights: 1, name: "로테르담 -> 헐 페리", lat: 51.922, lng: 4.479, elevation: "0m", temp: "14°C / 22°C", payment: "페리: 498 POUND", facilities: "3인 저녁뷔페 및 조식 포함", time: "로테르담 20:30 출발 -> 헐 08:00 도착", hasHighAltitude: false,
+              firepit: "해당 사항 없음.",
+              attractions: "탑승 전 시간이 남는다면 킨데르다이크(Kinderdijk) 풍차 마을이나 큐브 하우스 구경 추천.", 
+              supermarket: "<ul class='list-disc pl-4 space-y-1.5'><li><b>Markthal (로테르담 마켓홀):</b> 단순한 대형 마트가 아닌 거대 실내 시장이자 랜드마크입니다. 영국 귀환 전 마지막 기념품과 다양한 국가의 음식을 즐길 수 있습니다.</li><li><b>Albert Heijn (페리 터미널 가는 길):</b> 페리 탑승 전 선내에서 가볍게 먹을 군것질거리나 물 등을 콤팩트하게 사기 좋은 도심 매장입니다.</li></ul>" }
+        ];
+
+        function getWeatherIcon(code) {
+            if(code === 0) return '☀️'; 
+            if(code >= 1 && code <= 3) return '⛅'; 
+            if(code >= 45 && code <= 48) return '🌫️'; 
+            if(code >= 51 && code <= 67) return '🌧️'; 
+            if(code >= 71 && code <= 77) return '❄️'; 
+            if(code >= 80 && code <= 82) return '🌦️'; 
+            if(code >= 95) return '⛈️'; 
+            return '🌥️';
+        }
+
+        async function fetchWeather(lat, lng) {
+            const weatherContainer = document.getElementById('weather-forecast');
+            weatherContainer.innerHTML = '<span class="text-sm text-gray-500 loading-dots font-medium">기상청 데이터를 불러오는 중입니다</span>';
+            
+            try {
+                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
+                const data = await response.json();
+                
+                let html = '';
+                for(let i=0; i<3; i++) {
+                    const dayName = i === 0 ? '오늘' : i === 1 ? '내일' : '모레';
+                    const icon = getWeatherIcon(data.daily.weathercode[i]);
+                    const maxTemp = Math.round(data.daily.temperature_2m_max[i]);
+                    const minTemp = Math.round(data.daily.temperature_2m_min[i]);
+                    
+                    html += `
+                        <div class="flex flex-col items-center bg-white border border-blue-100 rounded-lg p-2 min-w-[70px] shadow-sm">
+                            <span class="text-xs font-bold text-gray-500 mb-1">${dayName}</span>
+                            <span class="text-2xl mb-1">${icon}</span>
+                            <span class="text-xs font-bold"><span class="text-blue-600">${minTemp}°</span> / <span class="text-red-500">${maxTemp}°</span></span>
+                        </div>
+                    `;
+                }
+                weatherContainer.innerHTML = html;
+            } catch (error) {
+                weatherContainer.innerHTML = '<span class="text-sm text-red-400">날씨 정보를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.</span>';
+            }
+        }
+
+        const map = L.map('map').setView([48.5, 7.5], 6);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors © CARTO'
+        }).addTo(map);
+
+        let markers = [];
+        let latlngs = [];
+
+        const listContainer = document.getElementById('itinerary-list');
+        const detailOverlay = document.getElementById('fullscreen-detail');
+
+        function showDetail(item) {
+            document.getElementById('detail-date').innerHTML = `${item.date} <span class="ml-2 inline-block bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold text-xs">${item.nights}박</span>`;
+            document.getElementById('detail-title').innerText = item.name;
+            document.getElementById('detail-elev').innerText = item.elevation;
+            
+            document.getElementById('detail-temp').innerText = item.temp; 
+            document.getElementById('detail-payment').innerText = item.payment;
+            document.getElementById('detail-facilities').innerText = item.facilities;
+            document.getElementById('detail-times').innerText = item.time;
+            document.getElementById('detail-firepit-text').innerHTML = item.firepit;
+            
+            const attrTitle = document.getElementById('detail-attractions-title');
+            if(item.hasHighAltitude) {
+                attrTitle.innerHTML = '<span class="mr-2">📸</span> 주요 관광지 및 고산기후';
+            } else {
+                attrTitle.innerHTML = '<span class="mr-2">📸</span> 주요 관광지';
+            }
+
+            document.getElementById('detail-attractions').innerHTML = item.attractions;
+            document.getElementById('detail-supermarket').innerHTML = item.supermarket;
+            
+            map.flyTo([item.lat, item.lng], 9, { duration: 1.5 });
+            
+            detailOverlay.classList.remove('hidden', 'slide-up-leave');
+            detailOverlay.classList.add('slide-up-active');
+
+            fetchWeather(item.lat, item.lng);
+        }
+
+        function closeDetail() {
+            detailOverlay.classList.remove('slide-up-active');
+            detailOverlay.classList.add('slide-up-leave');
+            
+            map.flyTo([48.5, 7.5], 6, { duration: 1.5 });
+            
+            setTimeout(() => {
+                detailOverlay.classList.add('hidden');
+                detailOverlay.classList.remove('slide-up-leave');
+            }, 300);
+        }
+
+        async function calculateRealtimeRoutes() {
+            const travelTimes = [
+                "🚢+🚗 4시간", "🚗 2시간 30분", "🚗 2시간", "🚗 2시간 30분", 
+                "🚗 1시간 30분", "🚗 3시간", "🚗 4시간 30분", "🚗 2시간 30분", 
+                "🚗 1시간 30분", "🚗 3시간 30분", "🚗 3시간 30분", "🚗 2시간 30분", "🚗 1시간 30분"
+            ];
+
+            for (let i = 0; i < latlngs.length - 1; i++) {
+                const originLat = latlngs[i][0];
+                const originLng = latlngs[i][1];
+                const destLat = latlngs[i+1][0];
+                const destLng = latlngs[i+1][1];
+                
+                const midLat = (originLat + destLat) / 2;
+                const midLng = (originLng + destLng) / 2;
+                const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}`;
+                
+                let timeText = "계산중...";
+                let timeLabel = L.divIcon({
+                    className: 'travel-time-label',
+                    html: `<a href="${googleMapsUrl}" target="_blank" class="travel-time-box loading-dots">
+                            ${timeText}
+                           </a>`,
+                    iconSize: [0, 0]
+                });
+                
+                let marker = L.marker([midLat, midLng], { icon: timeLabel }).addTo(map);
+
+                try {
+                    if(i === 0 || i === 13) {
+                        timeText = i === 0 ? "🚢 4시간 (페리 포함)" : "🚢 11시간 (페리)";
+                    } else {
+                        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=false`);
+                        const data = await res.json();
+                        
+                        if(data.code === 'Ok') {
+                            const durationSeconds = data.routes[0].duration;
+                            const hours = Math.floor(durationSeconds / 3600);
+                            const minutes = Math.floor((durationSeconds % 3600) / 60);
+                            timeText = `🚗 ${hours}시간 ${minutes}분`;
+                        } else {
+                            timeText = travelTimes[i];
+                        }
+                    }
+
+                    const newLabel = L.divIcon({
+                        className: 'travel-time-label',
+                        html: `<a href="${googleMapsUrl}" target="_blank" class="travel-time-box" title="구글 길찾기로 열기">
+                                ${timeText} 
+                                <svg class="inline-block w-3 h-3 ml-1 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                               </a>`,
+                        iconSize: [0, 0]
+                    });
+                    marker.setIcon(newLabel);
+
+                } catch (e) {
+                    marker.setIcon(L.divIcon({
+                        className: 'travel-time-label',
+                        html: `<a href="${googleMapsUrl}" target="_blank" class="travel-time-box">${travelTimes[i]}</a>`,
+                        iconSize: [0, 0]
+                    }));
+                }
+                
+                await new Promise(r => setTimeout(r, 300));
+            }
+        }
+
+        itineraryData.forEach((item, index) => {
+            latlngs.push([item.lat, item.lng]);
+
+            const customIcon = L.divIcon({
+                className: 'custom-map-marker',
+                html: `
+                    <div class="relative w-10 h-10 flex items-center justify-center group cursor-pointer">
+                        <div class="w-8 h-8 bg-slate-800 rounded-full border-[2.5px] border-white shadow-md flex items-center justify-center text-white font-bold text-sm z-10 transition-transform group-hover:bg-blue-600 group-hover:scale-110">
+                            ${index + 1}
+                        </div>
+                        <div class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-[1.5px] border-white shadow-sm z-20 transition-transform group-hover:scale-110">
+                            ${item.nights}박
+                        </div>
+                    </div>
+                `,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+            
+            const marker = L.marker([item.lat, item.lng], { icon: customIcon }).addTo(map);
+            marker.bindTooltip(`<b>${index + 1}.</b> ${item.name}`, { direction: 'top', offset: [0, -10] });
+            marker.on('click', () => showDetail(item));
+            markers.push(marker);
+
+            const listItem = document.createElement('div');
+            listItem.className = "p-4 mb-3 bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200 group";
+            
+            listItem.innerHTML = `
+                <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">거점 ${index + 1}</span>
+                        <span class="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-full border border-red-100">${item.nights}박</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${item.date}</span>
+                </div>
+                <h3 class="text-sm font-bold text-gray-800 mt-1">${item.name}</h3>
+                <div class="flex items-center justify-between mt-2">
+                    <p class="text-xs text-gray-500 truncate w-2/3">${item.payment.split('/')[0]}</p>
+                    <span class="text-xs font-medium text-blue-500 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">해발 ${item.elevation}</span>
+                </div>
+            `;
+            listItem.onclick = () => showDetail(item);
+            listContainer.appendChild(listItem);
+        });
+
+        L.polyline(latlngs, { color: '#3b82f6', weight: 3, dashArray: '5, 10', opacity: 0.7 }).addTo(map);
+        map.fitBounds(L.polyline(latlngs).getBounds(), { padding: [50, 50] });
+
+        calculateRealtimeRoutes();
+    </script>
+</body>
+</html>
