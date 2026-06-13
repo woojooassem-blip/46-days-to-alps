@@ -323,7 +323,7 @@
 
                 try {
                     if(i === 0 || i === 13) {
-                        timeText = i === 0 ? "🚢 4시간 (페리 포함)" : "🚢 11시간 (페리)";
+                        timeText = i === 0 ? "🚢 4시간 (터미널까지)" : "🚢 11시간 (페리)";
                     } else {
                         const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=false`);
                         const data = await res.json();
